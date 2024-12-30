@@ -1,0 +1,62 @@
+{
+  "name": "git-track",
+  "displayName": "Git-Track",
+  "description": "GitHub commit tracking and repository logging for VS Code.",
+  "version": "0.0.2",
+  "engines": {
+    "vscode": "^1.96.0"
+  },
+  "categories": [
+    "SCM Providers",
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "extension.authenticateGitHub",
+        "title": "Authenticate with GitHub"
+      },
+      {
+        "command": "extension.createGitTrackLogRepo",
+        "title": "Create Log Repository"
+      }
+    ]
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "pretest": "npm run lint",
+    "test": "vscode-test",
+    "start": "node ./extension.js"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "20.x",
+    "@types/vscode": "^1.96.0",
+    "@vscode/test-cli": "^0.0.10",
+    "@vscode/test-electron": "^2.4.1",
+    "eslint": "^9.16.0"
+  },
+  "dependencies": {
+    "@octokit/auth-oauth-device": "^7.1.1",
+    "@octokit/rest": "^18.12.0",
+    "dotenv": "^16.4.7",
+    "fs-extra": "^11.1.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/akshit2941/git-track"
+  },
+  "keywords": [
+    "github",
+    "git",
+    "commit tracking",
+    "vscode",
+    "logging",
+    "repository"
+  ],
+  "author": "Akshit Saini",
+  "license": "MIT",
+  "homepage": "https://github.com/akshit2941/git-track"
+}
