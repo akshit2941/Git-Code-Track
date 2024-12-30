@@ -10,7 +10,12 @@
     "SCM Providers",
     "Other"
   ],
-  "activationEvents": [],
+  "extensionDependencies": [
+    "vscode.git"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "main": "./extension.js",
   "contributes": {
     "commands": [
@@ -21,6 +26,21 @@
       {
         "command": "extension.createGitTrackLogRepo",
         "title": "Create Log Repository"
+      },
+      {
+        "command": "extension.showCommitDetails",
+        "title": "Show Commit Details"
+      },
+      {
+        "command": "extension.toggleCommitTracking",
+        "title": "Toggle Commit Tracking"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "extension.toggleCommitTracking",
+        "key": "ctrl+alt+t",
+        "when": "editorTextFocus"
       }
     ]
   },
@@ -42,7 +62,8 @@
     "@octokit/auth-oauth-device": "^7.1.1",
     "@octokit/rest": "^18.12.0",
     "dotenv": "^16.4.7",
-    "fs-extra": "^11.1.1"
+    "fs-extra": "^11.1.1",
+    "simple-git": "^3.27.0"
   },
   "repository": {
     "type": "git",
