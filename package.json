@@ -2,7 +2,7 @@
   "name": "git-track",
   "displayName": "Git-Track",
   "description": "GitHub commit tracking and repository logging for VS Code.",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "engines": {
     "vscode": "^1.96.0"
   },
@@ -20,35 +20,29 @@
   "contributes": {
     "commands": [
       {
-        "command": "extension.authenticateGitHub",
-        "title": "Authenticate with GitHub"
-      },
-      {
-        "command": "extension.createGitTrackLogRepo",
-        "title": "Create Log Repository"
-      },
-      {
         "command": "extension.showCommitDetails",
-        "title": "Show Commit Details"
+        "title": "Show Commit Details",
+        "category": "Git-Track"
       },
       {
         "command": "extension.toggleCommitTracking",
-        "title": "Toggle Commit Tracking"
+        "title": "Toggle Commit Tracking",
+        "category": "Git-Track"
       }
     ],
     "keybindings": [
       {
         "command": "extension.toggleCommitTracking",
         "key": "ctrl+alt+t",
-        "when": "editorTextFocus"
+        "mac": "cmd+alt+t",
+        "when": "editorFocus"
       }
     ]
   },
   "scripts": {
     "lint": "eslint .",
     "pretest": "npm run lint",
-    "test": "vscode-test",
-    "start": "node ./extension.js"
+    "test": "vscode-test"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",
@@ -56,14 +50,11 @@
     "@types/vscode": "^1.96.0",
     "@vscode/test-cli": "^0.0.10",
     "@vscode/test-electron": "^2.4.1",
-    "eslint": "^9.16.0"
+    "eslint": "^8.56.0"
   },
   "dependencies": {
-    "@octokit/auth-oauth-device": "^7.1.1",
-    "@octokit/rest": "^18.12.0",
-    "dotenv": "^16.4.7",
-    "fs-extra": "^11.1.1",
-    "simple-git": "^3.27.0"
+    "@octokit/rest": "^20.0.2",
+    "dotenv": "^16.4.7"
   },
   "repository": {
     "type": "git",
@@ -75,7 +66,8 @@
     "commit tracking",
     "vscode",
     "logging",
-    "repository"
+    "repository",
+    "version control"
   ],
   "author": "Akshit Saini",
   "license": "MIT",

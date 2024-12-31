@@ -5,68 +5,72 @@ const { Octokit } = require('@octokit/rest');
 require('dotenv').config({ path: path.resolve(__dirname, '.env') });
 
 let octokit;
+let trackingManager = null;
+
 
 async function createGitTrackLogRepo() {
     const repoName = 'git-track';
     try {
-        // Check if the repository already exists
         await octokit.repos.get({
             owner: 'akshit2941',
             repo: repoName
         });
-        vscode.window.showInformationMessage(`Repository '${repoName}' already exists.`);
+        vscode.window.showInformationMessage(`Repository ready for tracking.`);
     } catch (error) {
         if (error.status === 404) {
-            // Repository does not exist, create it
-            await octokit.repos.createForAuthenticatedUser({
-                name: repoName,
-                private: true,
-                description: 'A common repository to track all the commits of the GitHub'
-            });
-            vscode.window.showInformationMessage(`Repository '${repoName}' created successfully.`);
+            try {
+                await octokit.repos.createForAuthenticatedUser({
+                    name: repoName,
+                    private: true,
+                    description: 'A common repository to track all the commits of the GitHub'
+                });
+                vscode.window.showInformationMessage(`Common repository created successfully.`);
+            } catch (createError) {
+                vscode.window.showErrorMessage(`Error creating repository: ${createError.message}`);
+            }
         } else {
             vscode.window.showErrorMessage(`Error checking repository: ${error.message}`);
         }
     }
 }
+
+/**
+ * Initializes GitHub authentication.
+ */
+async function initializeGitHub(context) {
+    try {
+        const token = process.env.GITHUB_TOKEN;
+
+        if (!token) {
+            throw new Error('GitHub token not found. Please set GITHUB_TOKEN in .env file.');
+        }
+
+        octokit = new Octokit({ auth: token });
+        const { data } = await octokit.users.getAuthenticated();
+
+        vscode.window.showInformationMessage(`Successfully authenticated as ${data.login}`);
+        await context.workspaceState.update('githubConnectionStatus', 'Connected');
+
+        // Create repository after successful authentication
+        await createGitTrackLogRepo();
+
+    } catch (error) {
+        vscode.window.showErrorMessage(`GitHub Authentication failed: ${error.message}`);
+        await context.workspaceState.update('githubConnectionStatus', 'Disconnected');
+    }
+}
+
 /**
  * Activates the extension.
  * @param {vscode.ExtensionContext} context - The extension context.
  */
 async function activate(context) {
-    let disposableAuth = vscode.commands.registerCommand('extension.authenticateGitHub', async () => {
-        try {
-            // Define GitHub token directly in the code
-            const token = process.env.GITHUB_TOKEN;
+    // Initialize tracking status as inactive
+    await context.workspaceState.update('activeTrackingStatus', false);
 
-            if (!token) {
-                throw new Error('Token is required');
-            }
+    // Automatically initialize GitHub on startup
+    await initializeGitHub(context);
 
-            // Initialize Octokit with token
-            octokit = new Octokit({
-                auth: token
-            });
-
-            // Verify authentication
-            const { data } = await octokit.users.getAuthenticated();
-            vscode.window.showInformationMessage(`Successfully authenticated as ${data.login}`);
-
-        } catch (error) {
-            vscode.window.showErrorMessage(`GitHub Authentication failed: ${error.message}`);
-            await context.workspaceState.update('githubConnectionStatus', 'Disconnected');
-        }
-    });
-
-    let disposableCreateRepo = vscode.commands.registerCommand('extension.createGitTrackLogRepo', async () => {
-        if (!octokit) {
-            vscode.window.showErrorMessage('Please authenticate GitHub first.');
-            return;
-        }
-        await createGitTrackLogRepo();
-    });
-
-    // Register the Show Commit Details command
     let disposableShowDetails = vscode.commands.registerCommand('extension.showCommitDetails', async () => {
         const activeTracking = context.workspaceState.get('activeTrackingStatus', false);
         const lastCommit = context.workspaceState.get('lastCommitTimestamp', 'N/A');
@@ -82,56 +86,52 @@ async function activate(context) {
         vscode.window.showInformationMessage(`Commit Details:\n${details}`);
     });
 
-    // Register the Toggle Commit Tracking command
     let disposableToggleTracking = vscode.commands.registerCommand('extension.toggleCommitTracking', async () => {
-        const currentStatus = context.workspaceState.get('activeTrackingStatus', true);
+        const currentStatus = context.workspaceState.get('activeTrackingStatus', false);
+
+        if (!currentStatus) {
+            // Starting tracking
+            if (!octokit) {
+                vscode.window.showErrorMessage('GitHub authentication failed. Please check your token and try restarting VS Code.');
+                return;
+            }
+            trackingManager = await repositoryManager(context);
+            vscode.window.showInformationMessage('Commit Tracking Started');
+        } else {
+            // Stopping tracking
+            if (trackingManager) {
+                trackingManager = null;
+            }
+            vscode.window.showInformationMessage('Commit Tracking Stopped');
+        }
+
         await context.workspaceState.update('activeTrackingStatus', !currentStatus);
-        vscode.window.showInformationMessage(`Commit Tracking ${!currentStatus ? 'Enabled' : 'Disabled'}.`);
+        updateStatusBar();
     });
 
-    // Create a status bar item for commit tracking
     const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
     statusBarItem.command = 'extension.showCommitDetails';
-    statusBarItem.text = 'Commit Tracker: Active';
+    statusBarItem.text = 'Commit Tracker: Inactive';
     statusBarItem.tooltip = 'Click to view commit details';
     statusBarItem.show();
 
-    // Update status bar based on tracking status
     const updateStatusBar = () => {
         const isTrackingActive = context.workspaceState.get('activeTrackingStatus', false);
         statusBarItem.text = `Commit Tracker: ${isTrackingActive ? 'Active' : 'Inactive'}`;
     };
 
-    // Initial status bar update
+    // Set initial states
+    await context.workspaceState.update('syncStatus', 'Not synced yet.');
     updateStatusBar();
 
-    // Listen for changes in active tracking status
-    vscode.workspace.onDidChangeConfiguration((e) => {
-        if (e.affectsConfiguration('activeTrackingStatus')) {
-            updateStatusBar();
-        }
-    });
-
-    // Initialize additional state details
-    const isTrackingActive = true; // Assuming tracking is active by default
-    await context.workspaceState.update('activeTrackingStatus', isTrackingActive);
-    const githubStatus = context.workspaceState.get('githubConnectionStatus', 'Disconnected');
-    await context.workspaceState.update('githubConnectionStatus', githubStatus);
-    const currentSyncStatus = context.workspaceState.get('syncStatus', 'Not synced yet.');
-    await context.workspaceState.update('syncStatus', currentSyncStatus);
-
-    // Call repository manager to handle repository events
-    repositoryManager(context);
-
-    // Push disposables to subscriptions
-    context.subscriptions.push(disposableAuth);
-    context.subscriptions.push(disposableCreateRepo);
     context.subscriptions.push(disposableShowDetails);
     context.subscriptions.push(disposableToggleTracking);
     context.subscriptions.push(statusBarItem);
 }
 
-function deactivate() { }
+function deactivate() {
+    trackingManager = null;
+}
 
 module.exports = {
     activate,

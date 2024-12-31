@@ -5,11 +5,7 @@ const util = require('util');
 
 const execPromise = util.promisify(exec);
 
-/**
- * Initializes the repository manager.
- * @param {Object} context - The extension context.
- */
-function repositoryManager(context) {
+async function repositoryManager(context) {
     const gitExtension = vscode.extensions.getExtension('vscode.git');
 
     if (!gitExtension) {
@@ -17,7 +13,15 @@ function repositoryManager(context) {
         return;
     }
 
-    Promise.resolve(gitExtension.activate()).then(() => {
+    const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
+
+    const owner = 'akshit2941';
+    const repo = 'git-track';
+    const filePath = 'commit-details.md';
+    const processedCommits = new Map();
+    let isFirstRun = true;
+
+    const initializeGitAPI = async () => {
         const git = gitExtension.exports.getAPI(1);
 
         if (!git) {
@@ -25,163 +29,156 @@ function repositoryManager(context) {
             return;
         }
 
-        // Initialize Octokit with a Personal Access Token
-        const octokit = new Octokit({
-            auth: process.env.GITHUB_TOKEN // Ensure this environment variable is set
-        });
+        git.repositories.forEach((repo) => setupCommitListener(repo));
+        git.onDidOpenRepository(setupCommitListener);
+    };
 
-        const owner = 'akshit2941'; // Replace with your GitHub username
-        const repo = 'git-track';
-        const filePath = 'commit-details.md'; // File to update in git-track repository
+    const setupCommitListener = (repo) => {
+        const repoPath = repo.rootUri.fsPath;
 
-        let previousCommits = {};
+        if (!processedCommits.has(repoPath)) {
+            processedCommits.set(repoPath, repo.state.HEAD?.commit || null);
 
-        /**
-         * Handles repository state changes.
-         * @param {Object} repo - The repository object.
-         */
-        const handleRepoChange = async (repo) => {
-            const repoPath = repo.rootUri.fsPath;
-            const branch = repo.state.HEAD?.name;
-
-            if (!branch) return;
-
-            const currentCommit = repo.state.HEAD.commit;
-
-            // Only process new commit if it differs from the previous one
-            if (currentCommit && previousCommits[repoPath] !== currentCommit) {
-                const commitDetails = await getCommitDetails(repoPath, currentCommit);
-                if (commitDetails) {
-                    await updateGitHubRepo(commitDetails);
-                    previousCommits[repoPath] = currentCommit; // Update the cache
+            repo.state.onDidChange(() => {
+                if (isFirstRun) {
+                    isFirstRun = false;
+                    return;
                 }
+                handleRepoChange(repo);
+            });
+        }
+    };
+
+    const handleRepoChange = async (repo) => {
+        const repoPath = repo.rootUri.fsPath;
+        const branch = repo.state.HEAD?.name;
+
+        if (!branch) return;
+
+        const currentCommit = repo.state.HEAD.commit;
+        const lastProcessedCommit = processedCommits.get(repoPath);
+
+        if (currentCommit && currentCommit !== lastProcessedCommit) {
+            processedCommits.set(repoPath, currentCommit);
+
+            const commitDetails = await getCommitDetails(repoPath, currentCommit);
+            if (commitDetails) {
+                vscode.window.showInformationMessage(`New commit detected: ${commitDetails.hash}`);
+                await updateGitHubRepo(commitDetails);
             }
-        };
+        }
+    };
 
-        /**
-         * Retrieves commit details using local Git commands.
-         * @param {string} repoPath - The repository path.
-         * @param {string} commitHash - The commit hash.
-         * @returns {Promise<Object|null>} - The commit details or null if not found.
-         */
-        const getCommitDetails = async (repoPath, commitHash) => {
+    const getCommitDetails = async (repoPath, commitHash) => {
+        try {
+            // Get repository name from the path
+            const repoName = repoPath.split('\\').pop(); // Changed to Windows path separator
+
+            // Modified format string to ensure proper date capture
+            const format = '%H%n%s%n%B%n%aI%n%an%n%ae'; // Changed to ISO 8601 format
+            const { stdout: commitInfo } = await execPromise(
+                `git show -s --format="${format}" ${commitHash}`,
+                { cwd: repoPath }
+            );
+            const [hash, subject, body, isoDate, authorName, authorEmail] = commitInfo.trim().split('\n');
+
+            // Get changed files
+            const { stdout: filesChanged } = await execPromise(
+                `git diff-tree --no-commit-id --name-only -r ${commitHash}`,
+                { cwd: repoPath }
+            );
+            const changedFiles = filesChanged.trim().split('\n').filter(Boolean);
+
+            // Get branch name
+            const { stdout: branchName } = await execPromise(
+                `git rev-parse --abbrev-ref HEAD`,
+                { cwd: repoPath }
+            );
+
+            // Format date properly
+            const date = new Date(isoDate);
+            const indianTime = date.toLocaleString('en-IN', {
+                timeZone: 'Asia/Kolkata',
+                dateStyle: 'full',
+                timeStyle: 'long'
+            });
+
+            return {
+                hash,
+                repoName,
+                branch: branchName.trim(),
+                message: subject,
+                fullMessage: body,
+                date: indianTime,
+                authorName,
+                authorEmail,
+                changedFiles
+            };
+        } catch (error) {
+            console.error('Error in getCommitDetails:', error);
+            vscode.window.showErrorMessage(`Failed to retrieve commit details: ${error.message}`);
+            return null;
+        }
+    };
+
+    const updateGitHubRepo = async (commitDetails) => {
+        try {
+            let existingContent = '';
+            let fileSha = null;
+
             try {
-                const format = '%H%n%an%n%ae%n%s%n%ad';
-                const stdout = await execPromise(`git show -s --format=${format} ${commitHash}`, { cwd: repoPath });
-                const [hash, authorName, authorEmail, message, date] = stdout.stdout.split('\n');
+                const { data } = await octokit.repos.getContent({
+                    owner,
+                    repo,
+                    path: filePath,
+                    ref: 'main'
+                });
 
-                return { hash, authorName, authorEmail, message, date };
-            } catch (error) {
-                vscode.window.showErrorMessage(`Failed to retrieve commit details: ${error.message}`);
-                return null;
-            }
-        };
-
-        /**
-         * Updates the git-track repository on GitHub with commit details.
-         * @param {Object} commitDetails - The commit details.
-         */
-        const updateGitHubRepo = async (commitDetails) => {
-            try {
-                let existingContent = '';
-                let fileSha = null;
-
-                // Fetch the latest file content and SHA
-                try {
-                    const { data: fileData } = await octokit.repos.getContent({
-                        owner,
-                        repo,
-                        path: filePath,
-                        ref: 'main'
-                    });
-
-                    if ('content' in fileData) {
-                        existingContent = Buffer.from(fileData.content, 'base64').toString('utf-8');
-                    }
-                    if (Array.isArray(fileData)) {
-                        fileSha = fileData[0].sha;
-                    } else {
-                        fileSha = fileData.sha;
-                    }
-                } catch (error) {
-                    if (error.status !== 404) throw error;
-                    // File does not exist yet, so no sha needed
-                }
-
-                const newEntry = `- **${commitDetails.hash}**: ${commitDetails.message} by ${commitDetails.authorName} on ${commitDetails.date}`;
-                const updatedContent = existingContent ? `${existingContent}\n${newEntry}` : newEntry;
-                const encodedContent = Buffer.from(updatedContent).toString('base64');
-
-                // Update or create the file with new commit details
-                try {
-                    await octokit.repos.createOrUpdateFileContents({
-                        owner,
-                        repo,
-                        path: filePath,
-                        message: `Update commit details for ${commitDetails.hash}`,
-                        content: encodedContent,
-                        sha: fileSha || undefined,  // Pass sha only if the file exists
-                        branch: 'main'
-                    });
-
-                    // Only notify GitHub update once
-                    vscode.window.showInformationMessage('Commit details updated on GitHub.');
-                } catch (error) {
-                    if (error.status === 409) {
-                        // SHA mismatch; refetch and retry
-                        const { data: latestFileData } = await octokit.repos.getContent({
-                            owner,
-                            repo,
-                            path: filePath,
-                            ref: 'main'
-                        });
-
-                        await octokit.repos.createOrUpdateFileContents({
-                            owner,
-                            repo,
-                            path: filePath,
-                            message: `Update commit details for ${commitDetails.hash}`,
-                            content: encodedContent,
-                            sha: Array.isArray(latestFileData) ? latestFileData[0].sha : latestFileData.sha,
-                            branch: 'main'
-                        });
-
-                        vscode.window.showInformationMessage('Commit details updated after resolving conflict.');
-                    } else {
-                        throw error;
-                    }
+                if (!Array.isArray(data) && 'content' in data) {
+                    existingContent = Buffer.from(data.content, 'base64').toString('utf-8');
+                    fileSha = data.sha;
                 }
             } catch (error) {
-                vscode.window.showErrorMessage(`Failed to update GitHub repository: ${error.message}`);
+                if (error.status === 404) {
+                    existingContent = '# Commit Details Log\n\nDetailed tracking of all repository commits.\n\n';
+                    vscode.window.showInformationMessage('Creating new commit log file...');
+                } else {
+                    throw error;
+                }
             }
-        };
 
-        // Initialize existing repositories
-        git.repositories.forEach(repo => {
-            const repoPath = repo.rootUri.fsPath;
-            previousCommits[repoPath] = repo.state.HEAD?.commit;
+            const newEntry = `## Commit Details - ${commitDetails.date}\n` +
+                `- **Repository**: ${commitDetails.repoName}\n` +
+                `- **Branch**: ${commitDetails.branch}\n` +
+                `- **Commit ID**: ${commitDetails.hash}\n` +
+                `- **Files Changed**:\n  ${commitDetails.changedFiles.map(file => `- ${file}`).join('\n  ')}\n` +
+                `- **Commit Message**: ${commitDetails.message}\n` +
+                `- **Author**: ${commitDetails.authorName} <${commitDetails.authorEmail}>\n\n`;
 
-            repo.state.onDidChange(() => handleRepoChange(repo));
-        });
 
-        // Listen for new repositories being opened
-        git.onDidOpenRepository((repo) => {
-            const repoPath = repo.rootUri.fsPath;
-            previousCommits[repoPath] = repo.state.HEAD?.commit;
+            const updatedContent = existingContent ? `${existingContent}${newEntry}` : newEntry;
 
-            repo.state.onDidChange(() => handleRepoChange(repo));
-        });
+            await octokit.repos.createOrUpdateFileContents({
+                owner,
+                repo,
+                path: filePath,
+                message: fileSha ? `Update commit details for ${commitDetails.hash}` : 'Create commit details log file',
+                content: Buffer.from(updatedContent).toString('base64'),
+                sha: fileSha,
+                branch: 'main',
+            });
 
-        // Listen for repositories being closed
-        git.onDidCloseRepository((repo) => {
-            const repoPath = repo.rootUri.fsPath;
-            delete previousCommits[repoPath];
-        });
-    }).catch(err => {
-        vscode.window.showErrorMessage(`Failed to activate Git extension: ${err.message}`);
-    });
+            vscode.window.showInformationMessage(
+                fileSha ? 'Commit details updated on GitHub.' : 'Created commit log file and added first commit.'
+            );
+        } catch (error) {
+            console.error('Error details:', error);
+            vscode.window.showErrorMessage(`Failed to update GitHub repository: ${error.message}`);
+        }
+    };
+
+    await gitExtension.activate();
+    await initializeGitAPI();
 }
 
-module.exports = {
-    repositoryManager
-};
+module.exports = { repositoryManager };
