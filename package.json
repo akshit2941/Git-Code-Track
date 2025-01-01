@@ -28,6 +28,11 @@
         "command": "extension.toggleCommitTracking",
         "title": "Toggle Commit Tracking",
         "category": "Git-Track"
+      },
+      {
+        "command": "extension.reAuthenticate",
+        "title": "Re-Authenticate",
+        "category": "Git-Track"
       }
     ],
     "keybindings": [
@@ -45,6 +50,7 @@
     "test": "vscode-test"
   },
   "devDependencies": {
+    "@types/express": "^5.0.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "20.x",
     "@types/vscode": "^1.96.0",
@@ -53,8 +59,12 @@
     "eslint": "^8.56.0"
   },
   "dependencies": {
-    "@octokit/rest": "^20.0.2",
-    "dotenv": "^16.4.7"
+    "@octokit/rest": "^20.1.1",
+    "axios": "^1.7.9",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "open": "^10.1.0",
+    "request": "^2.88.2"
   },
   "repository": {
     "type": "git",

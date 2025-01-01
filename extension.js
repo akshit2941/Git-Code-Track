@@ -1,24 +1,33 @@
 const { repositoryManager } = require('./utils/repoManage');
+const { authenticate } = require('./utils/auth');
 const vscode = require('vscode');
 const path = require('path');
-const { Octokit } = require('@octokit/rest');
 require('dotenv').config({ path: path.resolve(__dirname, '.env') });
 
 let octokit;
 let trackingManager = null;
 
-
+/**
+ * Create or check if the GitHub 'git-track' repository exists.
+ */
 async function createGitTrackLogRepo() {
-    const repoName = 'git-track';
+    const repoName = 'git-track';  // Define repoName variable here
+
     try {
+        // Use the authenticated user's login to dynamically set the owner
+        const { data } = await octokit.users.getAuthenticated();
+
+        // Try fetching the repo by the authenticated user's login
         await octokit.repos.get({
-            owner: 'akshit2941',
+            owner: data.login,  // Automatically use the authenticated user's login as owner
             repo: repoName
         });
-        vscode.window.showInformationMessage(`Repository ready for tracking.`);
+        // vscode.window.showInformationMessage(`Repository ready for tracking.`);
     } catch (error) {
         if (error.status === 404) {
             try {
+                // eslint-disable-next-line no-unused-vars
+                const { data } = await octokit.users.getAuthenticated();
                 await octokit.repos.createForAuthenticatedUser({
                     name: repoName,
                     private: true,
@@ -34,31 +43,28 @@ async function createGitTrackLogRepo() {
     }
 }
 
+
+
 /**
- * Initializes GitHub authentication.
+ * Initialize GitHub authentication and repository setup.
+ * @param {vscode.ExtensionContext} context - The extension context.
  */
 async function initializeGitHub(context) {
     try {
-        const token = process.env.GITHUB_TOKEN;
+        const authResult = await authenticate(context); // Pass context to authenticate()
+        octokit = authResult.octokit;
 
-        if (!token) {
-            throw new Error('GitHub token not found. Please set GITHUB_TOKEN in .env file.');
-        }
-
-        octokit = new Octokit({ auth: token });
-        const { data } = await octokit.users.getAuthenticated();
-
-        vscode.window.showInformationMessage(`Successfully authenticated as ${data.login}`);
+        vscode.window.showInformationMessage(`Successfully authenticated as ${authResult.login}`);
         await context.workspaceState.update('githubConnectionStatus', 'Connected');
 
         // Create repository after successful authentication
         await createGitTrackLogRepo();
-
     } catch (error) {
         vscode.window.showErrorMessage(`GitHub Authentication failed: ${error.message}`);
         await context.workspaceState.update('githubConnectionStatus', 'Disconnected');
     }
 }
+
 
 /**
  * Activates the extension.
@@ -71,6 +77,7 @@ async function activate(context) {
     // Automatically initialize GitHub on startup
     await initializeGitHub(context);
 
+    // Command: Show commit details
     let disposableShowDetails = vscode.commands.registerCommand('extension.showCommitDetails', async () => {
         const activeTracking = context.workspaceState.get('activeTrackingStatus', false);
         const lastCommit = context.workspaceState.get('lastCommitTimestamp', 'N/A');
@@ -86,6 +93,7 @@ async function activate(context) {
         vscode.window.showInformationMessage(`Commit Details:\n${details}`);
     });
 
+    // Command: Toggle commit tracking
     let disposableToggleTracking = vscode.commands.registerCommand('extension.toggleCommitTracking', async () => {
         const currentStatus = context.workspaceState.get('activeTrackingStatus', false);
 
@@ -109,6 +117,11 @@ async function activate(context) {
         updateStatusBar();
     });
 
+    // Command: Re-authenticate
+    let disposableReAuthenticate = vscode.commands.registerCommand('extension.reAuthenticate', async () => {
+        await initializeGitHub(context);
+    });
+
     const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
     statusBarItem.command = 'extension.showCommitDetails';
     statusBarItem.text = 'Commit Tracker: Inactive';
@@ -126,6 +139,7 @@ async function activate(context) {
 
     context.subscriptions.push(disposableShowDetails);
     context.subscriptions.push(disposableToggleTracking);
+    context.subscriptions.push(disposableReAuthenticate);
     context.subscriptions.push(statusBarItem);
 }
 
@@ -136,4 +150,4 @@ function deactivate() {
 module.exports = {
     activate,
     deactivate
-}
+};
