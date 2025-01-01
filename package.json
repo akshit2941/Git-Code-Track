@@ -1,6 +1,7 @@
 {
   "name": "git-track",
   "displayName": "Git-Track",
+  "publisher": "AkshitSaini",
   "description": "GitHub commit tracking and repository logging for VS Code.",
   "version": "0.0.3",
   "engines": {
@@ -81,5 +82,5 @@
   ],
   "author": "Akshit Saini",
   "license": "MIT",
-  "homepage": "https://github.com/akshit2941/git-track"
+  "homepage": "https://github.com/akshit2941"
 }

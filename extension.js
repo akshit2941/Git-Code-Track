@@ -43,8 +43,6 @@ async function createGitTrackLogRepo() {
     }
 }
 
-
-
 /**
  * Initialize GitHub authentication and repository setup.
  * @param {vscode.ExtensionContext} context - The extension context.
@@ -64,7 +62,6 @@ async function initializeGitHub(context) {
         await context.workspaceState.update('githubConnectionStatus', 'Disconnected');
     }
 }
-
 
 /**
  * Activates the extension.

@@ -55,10 +55,10 @@ async function repositoryManager(context) {
 
     const setupCommitListener = (repo) => {
         const repoPath = repo.rootUri.fsPath;
-        console.log('Setting up listener for repo:', repoPath);
+        // console.log('Setting up listener for repo:', repoPath);
 
         const isCommonRepo = repoPath.toLowerCase().includes('git-track');
-        console.log('Is common repo:', isCommonRepo);
+        // console.log('Is common repo:', isCommonRepo);
 
         if (!processedCommits.has(repoPath)) {
             processedCommits.set(repoPath, repo.state.HEAD?.commit || null);

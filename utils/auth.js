@@ -2,7 +2,7 @@ const vscode = require('vscode');
 const { Octokit } = require('@octokit/rest');
 
 async function authenticate(context) {
-    console.log('Debug: Authentication started');
+    // console.log('Debug: Authentication started');
 
     // Ensure context is provided and valid
     if (!context) {
