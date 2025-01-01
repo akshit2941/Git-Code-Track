@@ -27,7 +27,8 @@ A VSCode extension that automatically tracks and logs Git commits across all you
 1. Generate a GitHub Personal Access Token:
 
    - Go to GitHub Settings → Developer settings → Personal access tokens
-   - Generate new token (classic)
+   - Generate new token (Fine-Grade-Token)
+   - Give suitable permission while creating (give all for better workflow)
    - Select scopes: `repo` and `user`
    - Copy the generated token
 

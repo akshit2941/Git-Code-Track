@@ -3,7 +3,8 @@
   "displayName": "Git-Track",
   "publisher": "AkshitSaini",
   "description": "GitHub commit tracking and repository logging for VS Code.",
-  "version": "0.0.3",
+  "version": "1.0.0",
+  "icon": "image/logo.png",
   "engines": {
     "vscode": "^1.96.0"
   },

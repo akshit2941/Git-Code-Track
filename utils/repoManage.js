@@ -73,7 +73,7 @@ async function repositoryManager(context) {
                 const lastProcessedCommit = processedCommits.get(repoPath);
 
                 if (isCommonRepo && currentCommit && currentCommit !== lastProcessedCommit) {
-                    vscode.window.showInformationMessage('New commit detected in git-track repository');
+                    // vscode.window.showInformationMessage('New commit detected in git-track repository');
                 }
 
                 handleRepoChange(repo);
