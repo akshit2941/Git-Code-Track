@@ -4,16 +4,16 @@ A VSCode extension that automatically tracks and logs Git commits across all you
 
 ## Features
 
-- 🔄 Automatic commit tracking across multiple repositories
-- 📝 Detailed commit logging including:
+- Automatic commit tracking across multiple repositories
+- Detailed commit logging including:
   - Commit hash
   - Commit message
   - Date and time (Indian Standard Time)
   - Changed files
   - Branch information
-- 🔐 Secure GitHub authentication
-- 📊 Centralized commit history in a dedicated repository
-- ⚡ Real-time commit detection and logging
+- Secure GitHub authentication
+- Centralized commit history in a dedicated repository
+- Real-time commit detection and logging
 
 ## Installation
 
@@ -82,6 +82,18 @@ A VSCode extension that automatically tracks and logs Git commits across all you
 ## Configuration
 
 No additional configuration required. The extension works out of the box after authentication.
+
+## Version History
+
+### v1.0.0 (Latest)
+
+- Initial release
+- Core Features:
+  - Automatic commit tracking
+  - GitHub authentication
+  - Centralized commit logging
+  - Real-time commit detection
+  - IST timezone support
 
 ## Sample Output
 
