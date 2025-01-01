@@ -1,65 +1,111 @@
-# git-track README
+# Git-Track
 
-This is the README for your extension "git-track". After writing up a brief description, we recommend including the following sections.
+A VSCode extension that automatically tracks and logs Git commits across all your workspace repositories, providing a centralized commit history in a dedicated GitHub repository.
 
 ## Features
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+- 🔄 Automatic commit tracking across multiple repositories
+- 📝 Detailed commit logging including:
+  - Commit hash
+  - Commit message
+  - Date and time (Indian Standard Time)
+  - Changed files
+  - Branch information
+- 🔐 Secure GitHub authentication
+- 📊 Centralized commit history in a dedicated repository
+- ⚡ Real-time commit detection and logging
 
-For example if there is an image subfolder under your extension project workspace:
+## Installation
 
-\!\[feature X\]\(images/feature-x.png\)
+1. Open VSCode
+2. Go to Extensions (Ctrl+Shift+X)
+3. Search for "Git-Track"
+4. Click Install
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+## Setup & Authentication
+
+1. Generate a GitHub Personal Access Token:
+
+   - Go to GitHub Settings → Developer settings → Personal access tokens
+   - Generate new token (classic)
+   - Select scopes: `repo` and `user`
+   - Copy the generated token
+
+2. First Launch:
+
+   - The extension will prompt for authentication
+   - Choose "Enter Token Manually"
+   - Paste your GitHub Personal Access Token
+   - A confirmation message will appear when authenticated
+
+3. Common Repository:
+   - After successful authentication, a `git-track` repository will be automatically created
+   - This repository will store all your commit logs
+
+## Usage
+
+1. Start Tracking:
+
+   - Press `Ctrl+Alt+T` to start commit tracking
+   - A notification will confirm tracking is active
+
+2. View Commit History:
+
+   - All commits will be automatically logged to `commit-details.md` in your `git-track` repository
+   - Each entry includes:
+     ```
+     ## Commit Details - [Date & Time]
+     - Repository: [Repository Name]
+     - Branch: [Branch Name]
+     - Commit Hash: [Hash]
+     - Message: [Commit Message]
+     - Files Changed: [List of Changed Files]
+     ```
+
+3. Stop Tracking:
+   - Press `Ctrl+Alt+T again to stop tracking
+   - A notification will confirm tracking is stopped
 
 ## Requirements
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+- Visual Studio Code v1.60.0 or higher
+- Git installed and configured
+- GitHub account
+- Active internet connection
 
-## Extension Settings
+## Commands & Shortcuts
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+- `Ctrl+Alt+T`: Toggle commit tracking
+- `Ctrl+Shift+P` → "Git Track: Show Status": View tracking status
+- `Ctrl+Shift+P` → "Git Track: Show Commit Details": View recent commit information
 
-For example:
+## Configuration
 
-This extension contributes the following settings:
+No additional configuration required. The extension works out of the box after authentication.
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+## Sample Output
+
+```markdown
+## Commit Details - Monday, March 18, 2024 at 3:30:45 PM India Standard Time
+
+- Repository: my-project
+- Branch: main
+- Commit Hash: a1b2c3d4
+- Message: Update user authentication
+- Files Changed:
+  - src/auth.js
+  - tests/auth.test.js
+```
 
 ## Known Issues
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+- OAuth authentication is under development
+- Token must have appropriate permissions for private repositories
 
-## Release Notes
+## Contributing
 
-Users appreciate release notes as you update your extension.
+Found a bug or have a feature request? Please open an issue on the GitHub repository.
 
-### 1.0.0
+## License
 
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
-
----
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code.  Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux)
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux)
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+This extension is licensed under the MIT License.
